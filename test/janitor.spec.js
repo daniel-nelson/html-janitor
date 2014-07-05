@@ -7,7 +7,8 @@ define([ 'html-janitor' ], function (HTMLJanitor) {
         b: {},
         p: { foo: true, bar: 'baz' },
         ul: {},
-        li: {}
+        li: {},
+        span: { class: ['one', 'two']}
       }
 
 
@@ -22,6 +23,24 @@ define([ 'html-janitor' ], function (HTMLJanitor) {
       p.setAttribute('style', 'font-size: 16px;');
       p.setAttribute('bar', 'not baz');
       expect(janitor.clean(p.outerHTML)).toBe('<p></p>');
+    });
+
+    it('should allow definition of multiple allowed classes', function () {
+      var span = document.createElement('span');
+      span.setAttribute('class', 'one two');
+      expect(janitor.clean(span.outerHTML)).toBe('<span class="one two"></span>');
+    });
+
+    it('should clean classes not defined in a multiple class definition', function () {
+      var span = document.createElement('span');
+      span.setAttribute('class', 'one four');
+      expect(janitor.clean(span.outerHTML)).toBe('<span class="one"></span>');
+    });
+
+    it('should clean spans left with no attributes after cleaning', function () {
+      var span = document.createElement('span');
+      span.setAttribute('class', 'four');
+      expect(janitor.clean(span.outerHTML)).toBe('');
     });
 
     it('should not clean attributes in the whitelist', function () {

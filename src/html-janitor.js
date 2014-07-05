@@ -34,7 +34,6 @@
 
     do {
       var nodeName = node.nodeName.toLowerCase();
-      var allowedAttrs = this.config.tags[nodeName];
 
       // Ignore nodes that have already been sanitized
       if (node._sanitized) {
@@ -98,21 +97,7 @@
         break;
       }
 
-      // Sanitize attributes
-      for (var a = 0; a < node.attributes.length; a += 1) {
-        var attr = node.attributes[a];
-        var attrName = attr.name.toLowerCase();
-
-        // Allow attribute?
-        var allowedAttrValue = allowedAttrs[attrName];
-        var notInAttrList = ! allowedAttrValue;
-        var valueNotAllowed = allowedAttrValue !== true && attr.value !== allowedAttrValue;
-        if (notInAttrList || valueNotAllowed) {
-          node.removeAttribute(attr.name);
-          // Shift the array to continue looping.
-          a = a - 1;
-        }
-      }
+      this._sanitizeAttributes(parentNode, node);
 
       // Sanitize children
       this._sanitize(node);
@@ -121,6 +106,53 @@
       node._sanitized = true;
     } while ((node = treeWalker.nextSibling()));
   };
+
+  HTMLJanitor.prototype._sanitizeAttributes = function (parentNode, node) {
+    var nodeName, allowedAttrs, allowedAttrValue;
+    var a, attr, attrName, item, itemIndex, attrItems, cleanAttrItems;
+    nodeName = node.nodeName.toLowerCase();
+    allowedAttrs = this.config.tags[nodeName];
+
+    for (a = node.attributes.length - 1; a >= 0; a -= 1) {
+      attr = node.attributes[a];
+      attrName = attr.name.toLowerCase();
+
+      // Allow attribute?
+      allowedAttrValue = allowedAttrs[attrName];
+      if (allowedAttrValue instanceof Array) {
+        attrItems = attr.value.split(' ');
+        cleanAttrItems = [];
+        for (itemIndex = 0; itemIndex < attrItems.length; itemIndex += 1) {
+          item = attrItems[itemIndex];
+          if (allowedAttrValue.indexOf(item) > -1) {
+            cleanAttrItems.push(item);
+          }
+        }
+        if (cleanAttrItems.length) {
+          attr.value = cleanAttrItems.join(' ');
+        } else {
+          node.removeAttribute(attr.name);
+        }
+      } else {
+        var notInAttrList = ! allowedAttrValue;
+        var valueNotAllowed = allowedAttrValue !== true && attr.value !== allowedAttrValue;
+        if (notInAttrList || valueNotAllowed) {
+          node.removeAttribute(attr.name);
+        }
+      }
+    }
+
+    if (nodeName === 'span' && node.attributes.length === 0) {
+      unwrap(parentNode, node);
+    }
+  }
+
+  function unwrap(node, childNode) {
+    while (childNode.childNodes.length > 0) {
+      node.insertBefore(childNode.childNodes[0], childNode);
+    }
+    node.removeChild(childNode);
+  }
 
   function createTreeWalker(node) {
     return document.createTreeWalker(node,
